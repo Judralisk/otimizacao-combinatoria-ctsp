@@ -45,8 +45,8 @@ pip install -r requirements.txt
 # experimento: todas as instâncias de uma pasta, 10 runs por instância
 python main.py --data instancias/sinteticas --runs 10 --itters 150
 
-# só algumas instâncias
-python main.py --data instancias/sinteticas --instances CTSP_50C4_1.csv CTSP_50C4_2.csv --runs 5
+# só algumas instâncias, com limite de tempo por run
+python main.py --data instancias/sinteticas --instances CTSP_50C4_1.csv CTSP_50C4_2.csv --runs 5 --time-limit 60
 
 # testes
 pip install pytest && python -m pytest -q
@@ -88,6 +88,57 @@ python scripts/instances.py synthetic --n 200 --k 15 --quantity 10 --out data/
 
 O conversor GTSPLIB arredonda as distâncias para o inteiro mais próximo (convenção EUC_2D da TSPLIB), que é como as
 melhores soluções da literatura são calculadas — sem isso o gap não é comparável. Use `--no-round` para desligar.
+
+## Resultados
+
+Configuração padrão (`Solutions_Quantity = 10`, `Max_itters = 150`, parada após 30 iterações sem melhora), uma semente por run,
+executado em uma máquina com 2 vCPUs (Python 3.13). A coluna **Melhora sobre o GRASP** compara a melhor solução final
+com a melhor solução da população inicial do GRASP na mesma semente. Os dados de cada run estão em [`docs/resultados/`](docs/resultados/).
+
+**Instâncias sintéticas** — 10 instâncias por grupo, 5 runs cada (50 runs por grupo):
+
+| Grupo | Runs viáveis | Melhora sobre o GRASP | CV entre runs | Tempo médio |
+|---|---|---|---|---|
+| 10C2 | 100% | 5,6% | 0,00% | 1,2 s |
+| 50C4 | 100% | 31,2% | 0,19% | 4,0 s |
+| 100C9 | 100% | 25,4% | 0,22% | 8,6 s |
+| 200C15 | 100% | 31,9% | 0,22% | 23,4 s |
+| 200C25 | 100% | 37,3% | 0,08% | 22,1 s |
+
+Nas 10C2 o ótimo foi calculado por enumeração exata: o algoritmo encontrou o ótimo em **50 de 50 runs**.
+O CV (coeficiente de variação da OF entre as runs de uma mesma instância, em média) abaixo de 0,25% indica que
+o resultado praticamente não depende da semente.
+
+**Instâncias baseadas na TSPLIB** — distância euclidiana sem arredondamento:
+
+| Instância | n | k | Runs | Viáveis | OF inicial (GRASP) | Melhor OF | OF média ± desvio | Melhora | Tempo médio |
+|---|---|---|---|---|---|---|---|---|---|
+| 5eil51 | 51 | 5 | 10 | 100% | 786,7 | 439,2 | 440,6 ± 1,7 | 43,9% | 4,2 s |
+| 15berlin52 | 52 | 15 | 10 | 100% | 11 708,4 | 8 051,2 | 8 185,2 ± 170,0 | 29,9% | 4,4 s |
+| 25rat99 | 99 | 25 | 10 | 100% | 2 156,6 | 1 294,1 | 1 328,0 ± 26,3 | 38,4% | 8,8 s |
+| 50eil101 | 101 | 50 | 10 | 100% | 1 134,0 | 672,6 | 684,9 ± 8,9 | 39,6% | 8,8 s |
+| 10gil262 | 262 | 10 | 10 | 100% | 7 873,6 | 2 617,5 | 2 666,2 ± 38,3 | 66,1% | 42,9 s |
+| 50gil262 | 262 | 50 | 10 | 100% | 5 106,9 | 2 539,1 | 2 602,1 ± 50,7 | 48,7% | 40,8 s |
+| 50rat783* | 783 | 50 | 5 | 100% | 26 194,9 | 11 426,7 | 12 157,3 ± 414,6 | 53,6% | 180 s |
+| 100pr1002* | 1002 | 100 | 5 | 100% | 719 074,6 | 442 189,8 | 448 868,3 ± 4 113,2 | 37,6% | 180 s |
+
+\* Com limite de 180 s por run (`--time-limit 180`). Todas as runs dessas duas pararam pelo limite de tempo
+(~44 e ~30 iterações), antes do critério de convergência — o que explica a dispersão maior entre runs.
+
+Observações:
+- Todas as runs terminaram com rota viável; com a penalização big-M na matriz, a solução inicial do GRASP já foi viável em todas elas.
+- A melhora pequena nas 10C2 é esperada: com 10 cidades o GRASP já chega perto do ótimo.
+- As instâncias TSPLIB `reconstruidas/` não são as mesmas da literatura (ver [`instancias/README.md`](instancias/README.md)),
+  então esses valores não devem ser comparados com resultados publicados.
+
+Para reproduzir:
+
+```bash
+python main.py --data instancias/sinteticas --runs 5
+python main.py --data instancias/tsplib/originais --runs 10
+python main.py --data instancias/tsplib/reconstruidas --instances 25rat99.csv 50eil101.csv 10gil262.csv 50gil262.csv --runs 10
+python main.py --data instancias/tsplib/reconstruidas --instances 50rat783.csv 100pr1002.csv --runs 5 --time-limit 180
+```
 
 ## Reprodutibilidade
 

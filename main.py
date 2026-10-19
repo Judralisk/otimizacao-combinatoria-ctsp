@@ -55,6 +55,7 @@ def main():
     parser.add_argument('--itters', type=int, default=150, help='Max_itters do híbrido')
     parser.add_argument('--solutions', type=int, default=10, help='Solutions_Quantity')
     parser.add_argument('--M', type=float, default=None, help='penalização (padrão: n * max distância)')
+    parser.add_argument('--time-limit', type=float, default=None, help='limite de tempo por run, em segundos')
     parser.add_argument('--out', default='results')
     args = parser.parse_args()
 
@@ -66,7 +67,7 @@ def main():
     if os.path.exists(runs_file):
         os.remove(runs_file)
 
-    params = {'Max_itters': args.itters, 'Solutions_Quantity': args.solutions}
+    params = {'Max_itters': args.itters, 'Solutions_Quantity': args.solutions, 'time_limit': args.time_limit}
 
     for instance in csv_files:
         coords, cluster, tsp_distance = read_tsp_file(os.path.join(args.data, instance))
